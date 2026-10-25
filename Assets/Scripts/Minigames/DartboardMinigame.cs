@@ -73,6 +73,7 @@ public class DartboardMinigame : MonoBehaviour
 
     private Vector3 savedCameraPosition;
     private Quaternion savedCameraRotation;
+    private Quaternion aimingRotation;
 
     private bool[] previousEnabledStates;
 
@@ -231,9 +232,14 @@ public class DartboardMinigame : MonoBehaviour
         $"Camera: {playerCamera.name}"
         );
 
+        aimingRotation = Quaternion.LookRotation(
+        boardFace.position - cameraAnchor.position,
+            Vector3.up
+        );
+
         playerCamera.transform.SetPositionAndRotation(
-            cameraAnchor.position,
-            cameraAnchor.rotation
+        cameraAnchor.position,
+        aimingRotation
         );
     }
 
@@ -271,20 +277,22 @@ public class DartboardMinigame : MonoBehaviour
             float swayOffset =
                 Mathf.Sin(phase) * swayAmplitudeMeters;
 
+            Vector3 swayRight = aimingRotation * Vector3.right;
+
             Vector3 cameraPosition =
-                cameraAnchor.position +
-                cameraAnchor.right * swayOffset;
+            cameraAnchor.position +
+            swayRight * swayOffset;
 
             playerCamera.transform.SetPositionAndRotation(
                 cameraPosition,
-                cameraAnchor.rotation
+                aimingRotation
             );
         }
         else
         {
             playerCamera.transform.SetPositionAndRotation(
                 cameraAnchor.position,
-                cameraAnchor.rotation
+                aimingRotation
             );
         }
 
@@ -297,7 +305,7 @@ public class DartboardMinigame : MonoBehaviour
 
             playerCamera.transform.SetPositionAndRotation(
                 cameraAnchor.position,
-                cameraAnchor.rotation
+                aimingRotation
             );
         }
     }
