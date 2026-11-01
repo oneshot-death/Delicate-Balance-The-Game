@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using TMPro;
 
 
@@ -27,6 +28,11 @@ public class DartboardMinigame : MonoBehaviour
     [Header("UI")]
     [SerializeField] private TMP_Text scoreText;
     [SerializeField] private TMP_Text statusText;
+    [Tooltip("Optional centered UI object shown while the darts minigame is active.")]
+    [SerializeField] private GameObject reticle;
+
+    [Tooltip("Enable the centered reticle while playing darts.")]
+    [SerializeField] private bool showReticle = true;
 
     [Header("Horizontal Sway")]
     [Tooltip("Maximum camera translation from the anchor, in metres.")]
@@ -36,6 +42,9 @@ public class DartboardMinigame : MonoBehaviour
     [SerializeField] private float swayCyclesPerSecond = 0.55f;
 
     [SerializeField] private float swayPhaseRadians = 0f;
+
+    [Tooltip("Minimum time LMB must be held before a release can throw a dart.")]
+    [SerializeField, Min(0f)] private float minimumHoldTime = 0.15f;
 
     [Header("Hidden Throw Bias")]
     [Tooltip("Positive values shift the dart's impact to the right.")]
@@ -61,8 +70,9 @@ public class DartboardMinigame : MonoBehaviour
     private float doubleRingInnerRatio = 0.95f;
 
     [Header("Optional Dart Visual")]
-    [Tooltip("Optional prefab. Its origin should be at its tip, with +Z pointing toward the tip.")]
-    [SerializeField] private GameObject dartPrefab;
+    [Tooltip("Optional dart prefab or imported GLB model. Its origin should be at its tip, with +Z pointing toward the tip.")]
+    [FormerlySerializedAs("dartPrefab")]
+    [SerializeField] private GameObject dartVisual;
 
     [SerializeField] private float dartSurfaceOffset = 0.002f;
     [SerializeField] private float maxShotDistance = 20f;
@@ -110,6 +120,8 @@ public class DartboardMinigame : MonoBehaviour
 
         if (statusText != null)
             statusText.gameObject.SetActive(false);
+
+        SetReticleVisible(false);
     }
 
     private void Update()
@@ -226,6 +238,8 @@ public class DartboardMinigame : MonoBehaviour
                 "Press Esc to exit.";
         }
 
+        SetReticleVisible(showReticle);
+
         Debug.Log(
         $"Dart anchor world position: {cameraAnchor.position}\n" +
         $"Dart anchor world rotation: {cameraAnchor.eulerAngles}\n" +
@@ -299,7 +313,18 @@ public class DartboardMinigame : MonoBehaviour
         // The throw uses the camera position on the release frame.
         if (released && isHoldingThrow)
         {
-            ThrowDart();
+            float heldTime = Time.time - holdStartTime;
+
+            if (heldTime >= minimumHoldTime)
+            {
+                ThrowDart();
+            }
+            else if (statusText != null)
+            {
+                statusText.text =
+                    $"Keep holding for {minimumHoldTime:0.00} seconds.\n" +
+                    "Hold LMB and release to throw. Esc to exit.";
+            }
 
             isHoldingThrow = false;
 
@@ -336,7 +361,7 @@ public class DartboardMinigame : MonoBehaviour
                 out onBoard
             );
 
-            if (onBoard && dartPrefab != null)
+            if (onBoard && dartVisual != null)
             {
                 Vector3 spawnPosition =
                     impactPoint +
@@ -348,7 +373,7 @@ public class DartboardMinigame : MonoBehaviour
                 );
 
                 GameObject dart = Instantiate(
-                    dartPrefab,
+                    dartVisual,
                     spawnPosition,
                     dartRotation
                 );
@@ -477,5 +502,13 @@ public class DartboardMinigame : MonoBehaviour
 
         if (statusText != null)
             statusText.gameObject.SetActive(false);
+
+        SetReticleVisible(false);
+    }
+
+    private void SetReticleVisible(bool visible)
+    {
+        if (reticle != null)
+            reticle.SetActive(visible);
     }
 }
