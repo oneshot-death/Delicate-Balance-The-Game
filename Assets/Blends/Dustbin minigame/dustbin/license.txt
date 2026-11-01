@@ -1,0 +1,11 @@
+Model Information:
+* title:	Dustbin
+* source:	https://sketchfab.com/3d-models/dustbin-717f8e05ee7341c0b084970780a3f797
+* author:	kslow (https://sketchfab.com/kslow)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Dustbin" (https://sketchfab.com/3d-models/dustbin-717f8e05ee7341c0b084970780a3f797) by kslow (https://sketchfab.com/kslow) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
