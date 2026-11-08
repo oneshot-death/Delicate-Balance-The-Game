@@ -1,0 +1,11 @@
+Model Information:
+* title:	Tower of Hanoi
+* source:	https://sketchfab.com/3d-models/tower-of-hanoi-6fa5278f1c3a4d189b693392604c40a4
+* author:	tsutomu.saito (https://sketchfab.com/tsutomu.saito)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Tower of Hanoi" (https://sketchfab.com/3d-models/tower-of-hanoi-6fa5278f1c3a4d189b693392604c40a4) by tsutomu.saito (https://sketchfab.com/tsutomu.saito) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

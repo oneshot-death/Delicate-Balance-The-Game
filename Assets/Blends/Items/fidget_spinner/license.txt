@@ -1,0 +1,11 @@
+Model Information:
+* title:	Fidget Spinner
+* source:	https://sketchfab.com/3d-models/fidget-spinner-dbf700b3f6fc45f3be947ad44289de8b
+* author:	Gwappa (https://sketchfab.com/Gwappa)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Fidget Spinner" (https://sketchfab.com/3d-models/fidget-spinner-dbf700b3f6fc45f3be947ad44289de8b) by Gwappa (https://sketchfab.com/Gwappa) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

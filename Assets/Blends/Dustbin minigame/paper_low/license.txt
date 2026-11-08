@@ -1,0 +1,11 @@
+Model Information:
+* title:	Paper Low
+* source:	https://sketchfab.com/3d-models/paper-low-bab9b0a4a3194165be4ac939c565d39f
+* author:	bargin_bill_bradly (https://sketchfab.com/bargin_bill_bradly)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Paper Low" (https://sketchfab.com/3d-models/paper-low-bab9b0a4a3194165be4ac939c565d39f) by bargin_bill_bradly (https://sketchfab.com/bargin_bill_bradly) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -1,0 +1,11 @@
+Model Information:
+* title:	Boxing_ Bag
+* source:	https://sketchfab.com/3d-models/boxing--bag-90a44cf1dc974740a7698af6bad6cb52
+* author:	hadleyanand (https://sketchfab.com/hadleyanand)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Boxing_ Bag" (https://sketchfab.com/3d-models/boxing--bag-90a44cf1dc974740a7698af6bad6cb52) by hadleyanand (https://sketchfab.com/hadleyanand) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
