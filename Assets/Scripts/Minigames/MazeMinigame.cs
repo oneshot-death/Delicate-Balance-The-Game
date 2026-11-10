@@ -18,8 +18,61 @@ using UnityEngine.InputSystem;
 ///     CameraAnchor                  (top-down view position, auto-fitted on begin)
 ///     Canvas (prompt + status text)
 /// </summary>
+public enum MazeChoice
+{
+    Classic = 0,
+    Hard = 1
+}
+
+/// <summary>
+/// One playable maze layout. maze.blend holds several mazes side by side in a single model;
+/// a variant says which model parts belong to it, where to centre it on the board, and where
+/// the ball starts / finishes. Add a new maze by adding a variant and a MazeChoice entry.
+/// </summary>
+[System.Serializable]
+public class MazeVariant
+{
+    public string name;
+
+    [Tooltip("Activated only while this maze is selected. Holds its wall/floor colliders, " +
+             "start and goal points and markers (child of Board).")]
+    public GameObject root;
+
+    [Tooltip("Children of the shared maze model (MazeModel) that make up this maze. " +
+             "Everything else in the model is hidden.")]
+    public GameObject[] modelParts;
+
+    [Tooltip("Local position given to the maze model so this maze sits on the board centre.")]
+    public Vector3 modelOffset;
+
+    [Tooltip("Where the ball is placed (maze units, child of Board).")]
+    public Transform startPoint;
+
+    [Tooltip("Centre of the goal hole (maze units, child of Board).")]
+    public Transform goalPoint;
+
+    [Tooltip("Ball radius in maze units. Corridors are about 1.0 wide in the hard maze, 1.2 in the classic one.")]
+    public float ballRadius = 0.27f;
+
+    [Tooltip("Goal is reached when the ball centre is this close to the goal centre (maze units).")]
+    public float goalCaptureRadius = 0.3f;
+
+    [Tooltip("Half the board width in maze units. Used to fit the top-down camera.")]
+    public float boardHalfExtent = 7.4f;
+}
+
 public class MazeMinigame : MonoBehaviour
 {
+    [Header("Maze Selection")]
+    [Tooltip("Which maze this board plays. Changing it in the Inspector swaps the maze right away.")]
+    [SerializeField] private MazeChoice selectedMaze = MazeChoice.Classic;
+
+    [Tooltip("Index matches MazeChoice (0 = Classic, 1 = Hard).")]
+    [SerializeField] private MazeVariant[] variants;
+
+    [Tooltip("The shared imported model (maze.blend instance, child of Board).")]
+    [SerializeField] private Transform modelRoot;
+
     [Header("Interaction")]
     [SerializeField] private Camera playerCamera;
     [SerializeField] private float interactDistance = 6f;
@@ -33,11 +86,11 @@ public class MazeMinigame : MonoBehaviour
     [SerializeField] private Transform board;
 
     [SerializeField] private Rigidbody ball;
-    [Tooltip("Where the ball is placed (child of Board).")]
-    [SerializeField] private Transform startPoint;
-    [Tooltip("Centre of the goal hole (child of Board).")]
-    [SerializeField] private Transform goalPoint;
     [SerializeField] private Transform cameraAnchor;
+
+    // Legacy serialized references from the single-maze version; the active variant's points are used now.
+    [SerializeField, HideInInspector] private Transform startPoint;
+    [SerializeField, HideInInspector] private Transform goalPoint;
 
     [Header("Player Controls")]
     [Tooltip("Movement + mouse-look scripts. Left empty, PlayerMovement and FPSCameraLook are found automatically.")]
@@ -56,14 +109,11 @@ public class MazeMinigame : MonoBehaviour
              "quickly acts like a trampoline and flings the ball over the walls.")]
     [SerializeField, Min(1f)] private float maxTiltSpeedDegPerSec = 30f;
 
-    [Header("Ball / Goal (in maze units, i.e. Board local space)")]
-    [SerializeField] private float goalCaptureRadius = 0.3f;
+    [Header("Ball")]
     [Tooltip("If the ball drops this far below the floor (maze units) it is put back on the start.")]
     [SerializeField] private float fallResetDepth = 1.5f;
 
     [Header("Top-down Camera")]
-    [Tooltip("Half the board width in maze units (7.37 for maze.blend).")]
-    [SerializeField] private float boardHalfExtent = 7.4f;
     [SerializeField] private float viewMargin = 1.12f;
 
     private bool isPlaying;
@@ -90,9 +140,6 @@ public class MazeMinigame : MonoBehaviour
         if (playerCamera == null)
             playerCamera = Camera.main;
 
-        if (board == null && startPoint != null)
-            board = startPoint.parent;
-
         if (tiltBody != null)
             restRotation = tiltBody.rotation;
 
@@ -100,7 +147,69 @@ public class MazeMinigame : MonoBehaviour
         // limits rolling speed to ~0.4 m/s, so raise it.
         if (ball != null)
             ball.maxAngularVelocity = 100f;
+
+        ApplySelection();
     }
+
+    private MazeVariant Active
+    {
+        get
+        {
+            if (variants == null || variants.Length == 0) return null;
+            return variants[Mathf.Clamp((int)selectedMaze, 0, variants.Length - 1)];
+        }
+    }
+
+    /// <summary>
+    /// Shows the selected maze (model parts, colliders, markers), hides the others and puts the
+    /// ball on its start. Runs on Awake and whenever the choice changes in the Inspector.
+    /// </summary>
+    [ContextMenu("Apply Maze Selection")]
+    public void ApplySelection()
+    {
+        MazeVariant active = Active;
+        if (active == null) return;
+
+        foreach (MazeVariant v in variants)
+            if (v.root != null) v.root.SetActive(v == active);
+
+        if (modelRoot != null)
+        {
+            foreach (Transform child in modelRoot)
+                child.gameObject.SetActive(false);
+
+            if (active.modelParts != null)
+                foreach (GameObject part in active.modelParts)
+                    if (part != null) part.SetActive(true);
+
+            modelRoot.localPosition = active.modelOffset;
+        }
+
+        startPoint = active.startPoint;
+        goalPoint = active.goalPoint;
+
+        if (ball != null && board != null)
+        {
+            // Sphere primitive has diameter 1, so scale = 2r in world units.
+            ball.transform.localScale = Vector3.one * (active.ballRadius * 2f * board.lossyScale.x);
+            if (startPoint != null && !isPlaying)
+                ResetBall(keepKinematic: true);
+        }
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        // Preview the chosen maze in the editor. Deferred because SetActive isn't allowed inside OnValidate.
+        if (Application.isPlaying) return;
+        UnityEditor.EditorApplication.delayCall += () =>
+        {
+            if (this == null || !gameObject.scene.IsValid()) return;
+            ApplySelection();
+            UnityEditor.EditorUtility.SetDirty(this);
+        };
+    }
+#endif
 
     private void Start()
     {
@@ -259,14 +368,15 @@ public class MazeMinigame : MonoBehaviour
         float dx = local.x - goal.x;
         float dz = local.z - goal.z;
 
-        if (dx * dx + dz * dz <= goalCaptureRadius * goalCaptureRadius)
+        float capture = Active.goalCaptureRadius;
+        if (dx * dx + dz * dz <= capture * capture)
             StartCoroutine(WinRoutine());
     }
 
     private void CheckFall()
     {
         Vector3 local = board.InverseTransformPoint(ball.position);
-        float limit = boardHalfExtent + 1f;
+        float limit = Active.boardHalfExtent + 1f;
 
         if (local.y < -fallResetDepth ||
             Mathf.Abs(local.x) > limit || Mathf.Abs(local.z) > limit)
@@ -329,7 +439,7 @@ public class MazeMinigame : MonoBehaviour
     private void PlaceCamera()
     {
         // Fit the whole board in view whatever the aspect ratio / FOV.
-        float half = boardHalfExtent * board.lossyScale.x * viewMargin;
+        float half = Active.boardHalfExtent * board.lossyScale.x * viewMargin;
         float tanHalfV = Mathf.Tan(playerCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
         float distance = Mathf.Max(half / tanHalfV, half / (tanHalfV * playerCamera.aspect));
 
