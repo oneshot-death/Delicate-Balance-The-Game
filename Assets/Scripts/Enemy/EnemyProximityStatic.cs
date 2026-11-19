@@ -77,6 +77,8 @@ public class EnemyProximityStatic : MonoBehaviour
 
         float t = Mathf.InverseLerp(silentDistance, fullVolumeDistance, nearest);   // 0 far, 1 close
         float targetVolume = maxVolume * Mathf.Pow(t, curvePower);
+        if (SafeRoom.IsSafe(listener.position))
+            targetVolume = 0f;   // safe rooms: the enemy is no concern, so no warning static
         source.volume = Mathf.Lerp(source.volume, targetVolume, 1f - Mathf.Exp(-smoothing * Time.deltaTime));
     }
 }

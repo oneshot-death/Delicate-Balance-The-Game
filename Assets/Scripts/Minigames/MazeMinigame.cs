@@ -113,6 +113,23 @@ public class MazeMinigame : MonoBehaviour
     [Tooltip("If the ball drops this far below the floor (maze units) it is put back on the start.")]
     [SerializeField] private float fallResetDepth = 1.5f;
 
+    [Tooltip("World scale of Board that the physics were tuned at (the prefab at scale 1 = 0.2). " +
+             "If the MazeBoard instance is scaled, gravity, contact distances and sleep/depenetration " +
+             "limits are scaled to match so the maze plays the same at any size.")]
+    [SerializeField, Min(0.0001f)] private float referenceBoardScale = 0.2f;
+
+    [Header("Corner Assist")]
+    [Tooltip("When the player tilts the ball into a wall and an opening starts just to one side, nudge the " +
+             "ball sideways into it. Without this a ball resting a hair short of a gap (e.g. under the end of a " +
+             "wall) can't be pushed in by the obvious key and looks stuck.")]
+    [SerializeField] private bool cornerAssist = true;
+
+    [Tooltip("How far sideways (in ball diameters) to look for an opening.")]
+    [SerializeField, Range(0f, 3f)] private float cornerAssistReach = 1.75f;
+
+    [Tooltip("Sideways push as a fraction of the acceleration a full tilt gives.")]
+    [SerializeField, Range(0f, 1.5f)] private float cornerAssistStrength = 0.8f;
+
     [Header("Top-down Camera")]
     [SerializeField] private float viewMargin = 1.12f;
 
@@ -128,6 +145,7 @@ public class MazeMinigame : MonoBehaviour
 
     private Vector3 savedCameraPosition;
     private Quaternion savedCameraRotation;
+    private float savedNearClip;
     private CursorLockMode savedLock;
     private bool savedCursorVisible;
 
@@ -149,6 +167,31 @@ public class MazeMinigame : MonoBehaviour
             ball.maxAngularVelocity = 100f;
 
         ApplySelection();
+        ConfigureScaledPhysics();
+    }
+
+    /// <summary>World size of the board relative to the size the physics were tuned at.</summary>
+    private float PhysicsScale =>
+        board != null ? board.lossyScale.x / referenceBoardScale : 1f;
+
+    /// <summary>
+    /// Makes the ball behave the same whatever scale the MazeBoard instance has. A maze scaled to
+    /// 0.1 is a 10x smaller world: real gravity would make everything happen ~3x too fast for its
+    /// size, and PhysX's default contact distance (1 cm) would be as big as the ball. Gravity is
+    /// applied by hand (see FixedUpdate) scaled by PhysicsScale, and the distance/energy limits are
+    /// scaled with it. At scale 1 this is identical to the default physics.
+    /// </summary>
+    private void ConfigureScaledPhysics()
+    {
+        float s = PhysicsScale;
+        float contact = Mathf.Max(0.0002f, Physics.defaultContactOffset * s);
+        foreach (Collider c in GetComponentsInChildren<Collider>(true))
+            c.contactOffset = contact;
+
+        if (ball == null) return;
+        ball.useGravity = false;
+        ball.sleepThreshold = Physics.sleepThreshold * s * s;   // energy per mass scales with v²
+        ball.maxDepenetrationVelocity = Physics.defaultMaxDepenetrationVelocity * s;
     }
 
     private MazeVariant Active
@@ -190,8 +233,11 @@ public class MazeMinigame : MonoBehaviour
 
         if (ball != null && board != null)
         {
-            // Sphere primitive has diameter 1, so scale = 2r in world units.
-            ball.transform.localScale = Vector3.one * (active.ballRadius * 2f * board.lossyScale.x);
+            // Sphere primitive has diameter 1, so the world diameter is 2r maze units. The ball's
+            // own parent (MazeBoard) may be scaled too, so convert that world size to local scale.
+            float worldDiameter = active.ballRadius * 2f * board.lossyScale.x;
+            float parentScale = ball.transform.parent != null ? ball.transform.parent.lossyScale.x : 1f;
+            ball.transform.localScale = Vector3.one * (worldDiameter / parentScale);
             if (startPoint != null && !isPlaying)
                 ResetBall(keepKinematic: true);
         }
@@ -244,6 +290,10 @@ public class MazeMinigame : MonoBehaviour
 
     private void FixedUpdate()
     {
+        // Gravity scaled to the maze's size (useGravity is off; see ConfigureScaledPhysics).
+        if (ball != null && !ball.isKinematic)
+            ball.AddForce(Physics.gravity * PhysicsScale, ForceMode.Acceleration);
+
         if (!isPlaying || tiltBody == null)
             return;
 
@@ -262,6 +312,71 @@ public class MazeMinigame : MonoBehaviour
             : restRotation;
 
         tiltBody.MoveRotation(target);
+
+        if (cornerAssist && !isWon && ball != null && !ball.isKinematic && d.sqrMagnitude > 0.09f)
+            ApplyCornerAssist(d);
+    }
+
+    /// <summary>
+    /// If the ball is blocked by a wall in the pressed direction <paramref name="pressed"/>, look sideways
+    /// (up to <see cref="cornerAssistReach"/> ball diameters) for the nearest spot from which that
+    /// direction is open, and push the ball toward it. Works in world space with the ball's real radius,
+    /// so it is independent of the maze scale. Only the maze's own colliders count.
+    /// </summary>
+    private void ApplyCornerAssist(Vector3 pressed)
+    {
+        MazeVariant active = Active;
+        if (active == null || board == null) return;
+
+        Vector3 up = board.up;
+        Vector3 dir = Vector3.ProjectOnPlane(pressed, up);
+        if (dir.sqrMagnitude < 1e-6f) return;
+        dir.Normalize();
+
+        float r = active.ballRadius * board.lossyScale.x;
+        // Probe with a slightly smaller sphere lifted off the floor so the floor itself never counts.
+        float probeR = r * 0.85f;
+        Vector3 origin = ball.position + up * (r * 0.15f);
+
+        // Blocked straight ahead?
+        if (!MazeCast(origin, probeR, dir, r * 0.6f))
+            return;
+
+        // Already moving well along the wall: let physics carry it.
+        Vector3 lateralAxis = Vector3.Cross(up, dir).normalized;
+        if (Mathf.Abs(Vector3.Dot(ball.linearVelocity, lateralAxis)) > r * 4f)
+            return;
+
+        float reach = cornerAssistReach * 2f * r;
+        float step = r * 0.2f;
+        for (float s = step; s <= reach; s += step)
+        {
+            foreach (float sign in new[] { 1f, -1f })
+            {
+                Vector3 side = lateralAxis * sign;
+                // The sideways path must be clear, and the pressed direction open from there.
+                if (MazeCast(origin, probeR, side, s)) continue;
+                if (MazeCast(origin + side * s, probeR, dir, r * 1.5f)) continue;
+
+                float accel = Physics.gravity.magnitude * PhysicsScale
+                              * Mathf.Sin(maxTiltDegrees * Mathf.Deg2Rad) * cornerAssistStrength;
+                ball.AddForce(side * accel, ForceMode.Acceleration);
+                return;
+            }
+        }
+    }
+
+    /// <summary>SphereCast that only reports hits on this maze's colliders (not the ball).</summary>
+    private bool MazeCast(Vector3 origin, float radius, Vector3 direction, float distance)
+    {
+        var hits = Physics.SphereCastAll(origin, radius, direction, distance, ~0, QueryTriggerInteraction.Ignore);
+        foreach (RaycastHit h in hits)
+        {
+            if (h.collider.attachedRigidbody == ball) continue;
+            if (!h.collider.transform.IsChildOf(transform)) continue;
+            return true;
+        }
+        return false;
     }
 
     // ---------------------------------------------------------------- interaction
@@ -290,8 +405,11 @@ public class MazeMinigame : MonoBehaviour
             return;
         }
 
-        savedCameraPosition = playerCamera.transform.position;
-        savedCameraRotation = playerCamera.transform.rotation;
+        // Saved relative to the camera's parent (the player), so the camera comes back to the
+        // player's eyes even if the player body was moved while the minigame was open.
+        savedCameraPosition = playerCamera.transform.localPosition;
+        savedCameraRotation = playerCamera.transform.localRotation;
+        savedNearClip = playerCamera.nearClipPlane;
         savedLock = Cursor.lockState;
         savedCursorVisible = Cursor.visible;
 
@@ -450,6 +568,11 @@ public class MazeMinigame : MonoBehaviour
 
         cameraAnchor.SetPositionAndRotation(pos, rot);
         playerCamera.transform.SetPositionAndRotation(pos, rot);
+
+        // A small (scaled-down) board puts the camera closer than the player's near clip plane
+        // (0.3 m), which clips the whole maze away. Pull the near plane in while playing;
+        // EndMinigame puts it back.
+        playerCamera.nearClipPlane = Mathf.Min(savedNearClip, distance * 0.1f);
     }
 
     private void RefreshStatus()
@@ -479,7 +602,8 @@ public class MazeMinigame : MonoBehaviour
         tiltBody.rotation = restRotation;
         ResetBall(keepKinematic: true);
 
-        playerCamera.transform.SetPositionAndRotation(savedCameraPosition, savedCameraRotation);
+        playerCamera.transform.SetLocalPositionAndRotation(savedCameraPosition, savedCameraRotation);
+        playerCamera.nearClipPlane = savedNearClip;
 
         if (statusText != null) statusText.gameObject.SetActive(false);
 

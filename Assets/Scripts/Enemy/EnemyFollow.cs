@@ -63,6 +63,11 @@ public class EnemyFollow : MonoBehaviour
     [Tooltip("How far ahead (in seconds of the player's last velocity) to guess where they went.")]
     public float predictAhead = 1.5f;
 
+    [Header("Safe Rooms")]
+    [Tooltip("When the player enters a SafeRoom, drop the trail and roam elsewhere instead of searching " +
+             "around the door they went through. Either way the enemy cannot see or track a player inside one.")]
+    public bool abandonTrailAtSafeRoom = true;
+
     [SerializeField] private State state = State.Chase;
 
     [Header("Animation")]
@@ -92,6 +97,8 @@ public class EnemyFollow : MonoBehaviour
     Vector3 lastSeenVelocity;
     Vector3 previousTargetPosition;
     bool investigating;
+    bool targetWasSafe;
+    NavMeshPath searchPath;
 
     public State CurrentState => state;
     public Vector3 LastKnownPosition => lastKnownPosition;
@@ -99,6 +106,7 @@ public class EnemyFollow : MonoBehaviour
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
+        searchPath = new NavMeshPath();
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
     }
@@ -146,6 +154,12 @@ public class EnemyFollow : MonoBehaviour
     {
         TrackTargetVelocity();
 
+        // The moment the player steps into a safe room, stop hunting them.
+        bool safe = TargetIsSafe();
+        if (safe && !targetWasSafe && abandonTrailAtSafeRoom)
+            AbandonTrail();
+        targetWasSafe = safe;
+
         if (agent.isOnNavMesh)
         {
             if (state == State.Chase)
@@ -153,7 +167,7 @@ public class EnemyFollow : MonoBehaviour
             else
                 UpdateSearch();
         }
-        else if (state == State.Chase && target != null)
+        else if (state == State.Chase && target != null && !safe)
         {
             // No NavMesh: straight-line fallback so the prefab still works in test scenes.
             Vector3 to = target.position - transform.position;
@@ -201,7 +215,18 @@ public class EnemyFollow : MonoBehaviour
         return true;
     }
 
-    bool CanSeeTarget() => InRange() && HasLineOfSight();
+    /// <summary>The player is inside a <see cref="SafeRoom"/>: invisible and untrackable.</summary>
+    bool TargetIsSafe() => target != null && SafeRoom.IsSafe(target.position);
+
+    bool CanSeeTarget() => !TargetIsSafe() && InRange() && HasLineOfSight();
+
+    /// <summary>Forget the player completely and go straight to roaming from wherever we are.</summary>
+    void AbandonTrail()
+    {
+        SetState(State.Search);
+        investigating = false;
+        searchTimer = searchDuration;
+    }
 
     // ------------------------------------------------------------------ chase
 
@@ -210,7 +235,7 @@ public class EnemyFollow : MonoBehaviour
         if (target == null)
             return;
 
-        if (!InRange())
+        if (!InRange() || TargetIsSafe())
         {
             LoseTarget();
             return;
@@ -288,8 +313,13 @@ public class EnemyFollow : MonoBehaviour
             next = transform.position + RandomFlat(searchRadius * 2f);
         }
 
-        if (NavMesh.SamplePosition(next, out var hit, searchRadius, NavMesh.AllAreas))
-            agent.SetDestination(hit.position);
+        // Only accept points we can actually walk to. Rooms behind closed doors are separate NavMesh
+        // islands; heading for one would just leave the enemy pressed against the door. If this pick
+        // fails, the next frame tries another random point.
+        if (NavMesh.SamplePosition(next, out var hit, searchRadius, NavMesh.AllAreas)
+            && agent.CalculatePath(hit.position, searchPath)
+            && searchPath.status == NavMeshPathStatus.PathComplete)
+            agent.SetPath(searchPath);
     }
 
     static Vector3 RandomFlat(float radius)
