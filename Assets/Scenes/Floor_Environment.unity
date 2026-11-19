@@ -161,8 +161,9 @@ GameObject:
   - component: {fileID: 1880365148}
   - component: {fileID: 1880365147}
   - component: {fileID: 1880365149}
+  - component: {fileID: 1880365150}
   m_Layer: 0
-  m_Name: Directional Light
+  m_Name: Moonlight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -178,8 +179,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 13
   m_Type: 1
-  m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
-  m_Intensity: 1
+  m_Color: {r: 0.55, g: 0.65, b: 0.9, a: 1}
+  m_Intensity: 0.08
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -241,7 +242,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1880365146}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: -0.33036608, y: 0.24321043, z: -0.088521354, w: -0.90767336}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -277,6 +278,29 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!114 &1880365150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1880365146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebb7016be9d07614d9f1977dfa25db38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NightLighting
+  moon: {fileID: 1880365147}
+  moonColor: {r: 0.55, g: 0.65, b: 0.9, a: 1}
+  moonIntensity: 0.08
+  nightSkybox: {fileID: 2100000, guid: cd003fd20fec77f49a2886b86c8c644b, type: 2}
+  ambientSky: {r: 0.025, g: 0.03, b: 0.05, a: 1}
+  ambientEquator: {r: 0.015, g: 0.017, b: 0.025, a: 1}
+  ambientGround: {r: 0.006, g: 0.006, b: 0.008, a: 1}
+  reflectionIntensity: 0.15
+  fog: 1
+  fogColor: {r: 0.01, g: 0.012, b: 0.02, a: 1}
+  fogDensity: 0.03
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

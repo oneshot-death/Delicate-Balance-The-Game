@@ -55,13 +55,20 @@
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Data\BCLExtensions\TargetingPacks\netstandard2.1\analyzers\dotnet\roslyn4.0\cs\System.Text.Json.SourceGeneration.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\NightLighting.cs" />
+    <Compile Include="Assets\Scripts\Enemy\EnemyProximityStatic.cs" />
+    <Compile Include="Assets\Scripts\Interaction\SafeRoom.cs" />
     <Compile Include="Assets\Scripts\Minigames\DartboardMinigame.cs" />
+    <Compile Include="Assets\Scripts\Interaction\Door.cs" />
     <Compile Include="Assets\Scripts\Minigames\MazeMinigame.cs" />
     <Compile Include="Assets\Scripts\PlayerCamera.cs" />
     <Compile Include="Assets\Scripts\AdditiveSceneLoader.cs" />
+    <Compile Include="Assets\Scripts\Interaction\ScreenFader.cs" />
     <Compile Include="Assets\TutorialInfo\Scripts\Readme.cs" />
     <Compile Include="Assets\Scripts\Enemy\EnemyFollow.cs" />
     <Compile Include="Assets\Scripts\PlayerMovement.cs" />
+    <Compile Include="Assets\Scripts\PlayerFlashlight.cs" />
+    <Compile Include="Assets\Scripts\Interaction\PlayerInteractor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Blends\Items\low_poly_smiley_ball\license.txt" />
