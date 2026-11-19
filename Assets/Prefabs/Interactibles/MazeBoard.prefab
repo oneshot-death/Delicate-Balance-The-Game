@@ -793,6 +793,10 @@ MonoBehaviour:
   tiltSmoothTime: 0.12
   maxTiltSpeedDegPerSec: 30
   fallResetDepth: 1.5
+  referenceBoardScale: 0.2
+  cornerAssist: 1
+  cornerAssistReach: 1.75
+  cornerAssistStrength: 0.8
   viewMargin: 1.12
 --- !u!1 &2273476023643299853
 GameObject:

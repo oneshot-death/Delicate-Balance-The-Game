@@ -1,4 +1,5 @@
 
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -188,8 +189,26 @@ public class DartboardMinigame : MonoBehaviour
             return;
         }
 
-        savedCameraPosition = playerCamera.transform.position;
-        savedCameraRotation = playerCamera.transform.rotation;
+        // Saved relative to the camera's parent (the player), so the camera comes back to the
+        // player's eyes even if the player body was moved while the minigame was open.
+        savedCameraPosition = playerCamera.transform.localPosition;
+        savedCameraRotation = playerCamera.transform.localRotation;
+
+        // If nothing usable is assigned in the scene (e.g. an empty slot), find the player's
+        // scripts automatically, like MazeMinigame. Otherwise mouse look keeps running during the
+        // minigame and its Esc handling unlocks the cursor.
+        bool anyAssigned = false;
+        if (playerBehavioursToDisable != null)
+            foreach (MonoBehaviour b in playerBehavioursToDisable)
+                if (b != null) { anyAssigned = true; break; }
+        if (!anyAssigned)
+        {
+            playerBehavioursToDisable = new MonoBehaviour[]
+            {
+                FindAnyObjectByType<PlayerMovement>(),
+                FindAnyObjectByType<FPSCameraLook>()
+            };
+        }
 
         // Remember previous enabled states before disabling controls.
         int count = playerBehavioursToDisable == null
@@ -476,10 +495,28 @@ public class DartboardMinigame : MonoBehaviour
         isPlaying = false;
         isHoldingThrow = false;
 
-        playerCamera.transform.SetPositionAndRotation(
+        playerCamera.transform.SetLocalPositionAndRotation(
             savedCameraPosition,
             savedCameraRotation
         );
+
+        if (scoreText != null)
+            scoreText.gameObject.SetActive(false);
+
+        if (statusText != null)
+            statusText.gameObject.SetActive(false);
+
+        SetReticleVisible(false);
+
+        // Re-enable the player scripts one frame later. Re-enabling them now would let
+        // FPSCameraLook see the same Esc press that ended the minigame and unlock the cursor,
+        // which stops mouse look until the cursor is locked again.
+        StartCoroutine(RestorePlayerNextFrame());
+    }
+
+    private IEnumerator RestorePlayerNextFrame()
+    {
+        yield return null;
 
         // Restore exactly the previously enabled/disabled states.
         if (playerBehavioursToDisable != null &&
@@ -497,13 +534,8 @@ public class DartboardMinigame : MonoBehaviour
             }
         }
 
-        if (scoreText != null)
-            scoreText.gameObject.SetActive(false);
-
-        if (statusText != null)
-            statusText.gameObject.SetActive(false);
-
-        SetReticleVisible(false);
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     private void SetReticleVisible(bool visible)
